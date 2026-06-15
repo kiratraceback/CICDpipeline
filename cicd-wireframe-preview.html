@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CI/CD Pipeline — Software Delivery Lifecycle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+
+/* ─── DESIGN TOKENS ───────────────────────────────────── */
+:root {
+  --bg:           #F8FAFC;
+  --bg-subtle:    #F1F5F9;
+  --card:         #FFFFFF;
+  --border:       #E2E8F0;
+  --border-soft:  #F1F5F9;
+  --text-1:       #0F172A;
+  --text-2:       #475569;
+  --text-3:       #94A3B8;
+  --accent:       #6366F1;
+  --accent-mid:   #818CF8;
+  --accent-soft:  #EEF2FF;
+  --accent-hover: #4F46E5;
+  --sidebar-collapsed: 60px;
+  --sidebar-w:    248px;
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    20px;
+  --shadow-xs:    0 1px 2px rgba(15,23,42,0.04);
+  --shadow-sm:    0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md:    0 4px 20px rgba(15,23,42,0.06), 0 1px 4px rgba(15,23,42,0.04);
+  --shadow-lg:    0 10px 40px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.04);
+  --shadow-xl:    0 20px 60px rgba(15,23,42,0.10), 0 4px 16px rgba(15,23,42,0.05);
+
+  /* Environment colours */
+  --c-local:    #3b82f6;
+  --c-local-bg: #eff6ff;
+  --c-local-b:  #93c5fd;
+  --c-local-t:  #1d4ed8;
+  --c-gate:     #eab308;
+  --c-gate-bg:  #fefce8;
+  --c-gate-b:   #fde047;
+  --c-gate-t:   #854d0e;
+  --c-stage:    #16a34a;
+  --c-stage-bg: #f0fdf4;
+  --c-stage-b:  #86efac;
+  --c-stage-t:  #15803d;
+  --c-prod:     #dc2626;
+  --c-prod-bg:  #fef2f2;
+  --c-prod-b:   #fca5a5;
+  --c-prod-t:   #b91c1c;
+}
+
+/* ─── RESET ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── ON MAIN (home page) ─────────────────────────────── */
+body.on-main .sidebar { display: none; }
+body.on-main .main-content {
+  margin-left: 0;
+  display: flex;
+  justify-content: center;
+  padding: 72px 32px 80px;
+}
+body.on-main #panel-s1   { width: 100%; max-width: 800px; }
+body.on-main .hero h1    { font-size: 38px; }
+body.on-main .hero p     { font-size: 16px; }
+body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--sidebar-collapsed);
+  height: 100vh;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: width 0.28s cubic-bezier(0.4,0,0.2,1), box-shadow 0.28s ease;
+  white-space: nowrap;
+}
+.sidebar:hover {
+  width: var(--sidebar-w);
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar-brand {
+  padding: 18px 0 14px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; cursor: pointer; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.sidebar-brand:hover { background: var(--bg); }
+.sidebar-brand-mark {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: white;
+  flex-shrink: 0; letter-spacing: -0.3px;
+}
+.sidebar-brand-text { opacity: 0; overflow: hidden; max-width: 0; transition: opacity 0.18s ease, max-width 0.28s ease; }
+.sidebar:hover .sidebar-brand-text { opacity: 1; max-width: 180px; }
+.sidebar-brand-text h2 { font-size: 12px; font-weight: 700; color: var(--text-1); letter-spacing: 0.2px; }
+.sidebar-brand-text p  { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+
+.sidebar-section-label {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-3);
+  padding: 8px 0 4px; text-align: center;
+  opacity: 0; overflow: hidden; max-height: 0;
+  transition: opacity 0.18s ease, max-height 0.28s ease;
+}
+.sidebar:hover .sidebar-section-label { opacity: 1; max-height: 32px; padding: 8px 20px 4px; text-align: left; }
+
+.sidebar-link {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; padding: 9px 0;
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+  text-decoration: none; position: relative;
+  transition: background 0.15s, color 0.15s, padding 0.28s, justify-content 0.1s, margin 0.28s, border-radius 0.28s;
+  overflow: hidden; flex-shrink: 0;
+}
+.sidebar:hover .sidebar-link {
+  padding: 8px 12px; justify-content: flex-start; gap: 10px;
+  margin: 1px 8px; border-radius: var(--radius-sm);
+}
+.sidebar-link:hover { background: var(--bg-subtle); color: var(--text-1); }
+.sidebar-link.active { color: var(--accent); background: var(--accent-soft); }
+.sidebar-link.active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--accent); border-radius: 0 2px 2px 0;
+}
+.sidebar:hover .sidebar-link.active::before { display: none; }
+
+.sidebar-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.dot-local   { background: var(--c-local); }
+.dot-gate    { background: var(--c-gate); }
+.dot-staging { background: var(--c-stage); }
+.dot-prod    { background: var(--c-prod); }
+.dot-neutral { background: var(--text-3); }
+
+.sidebar-link-text {
+  display: flex; align-items: center; gap: 6px;
+  opacity: 0; max-width: 0; overflow: hidden;
+  transition: opacity 0.18s ease, max-width 0.28s ease;
+}
+.sidebar:hover .sidebar-link-text { opacity: 1; max-width: 180px; }
+.sidebar-num { font-size: 10px; font-weight: 700; color: var(--text-3); flex-shrink: 0; }
+.sidebar-link.active .sidebar-num { color: var(--accent); }
+
+.sidebar-footer {
+  margin-top: auto; padding: 12px 0;
+  border-top: 1px solid var(--border-soft);
+  opacity: 0; overflow: hidden; max-height: 0;
+  transition: opacity 0.18s ease, max-height 0.28s ease;
+}
+.sidebar:hover .sidebar-footer { opacity: 1; max-height: 160px; padding: 12px 20px; }
+.env-legend { display: flex; flex-direction: column; gap: 5px; }
+.env-legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-2); }
+
+/* ─── MOBILE NAV ──────────────────────────────────────── */
+.mobile-nav {
+  display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  background: var(--card); border-bottom: 1px solid var(--border);
+  padding: 12px 16px; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+}
+.mobile-nav-title { font-size: 14px; font-weight: 700; color: var(--text-1); }
+.hamburger {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 6px 10px; cursor: pointer; font-size: 16px; color: var(--text-2);
+}
+
+/* ─── MAIN CONTENT ────────────────────────────────────── */
+.main-content {
+  margin-left: var(--sidebar-collapsed);
+  flex: 1;
+  padding: 48px 52px 80px;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* ─── PIPELINE PROGRESS TRACKER ────────────────────────── */
+.pipeline-tracker {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 28px;
+  overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+  padding: 2px 0 10px;
+}
+.pipeline-tracker::-webkit-scrollbar { display: none; }
+.pt-step {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; flex-shrink: 0; cursor: pointer;
+  opacity: 0.38; transition: opacity 0.2s;
+}
+.pt-step.done  { opacity: 0.65; }
+.pt-step.active { opacity: 1; }
+.pt-step:hover  { opacity: 1; }
+.pt-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border); border: 2px solid var(--border);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.pt-step.done   .pt-dot { background: var(--accent-mid); border-color: var(--accent-mid); }
+.pt-step.active .pt-dot { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.pt-label {
+  font-size: 10px; font-weight: 600; color: var(--text-3);
+  white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.pt-step.done   .pt-label { color: var(--accent-mid); }
+.pt-step.active .pt-label { color: var(--accent); }
+.pt-line {
+  flex: 1; height: 1.5px; background: var(--border);
+  min-width: 18px; max-width: 56px;
+  margin-bottom: 15px; flex-shrink: 0;
+  transition: background 0.2s;
+}
+.pt-line.done { background: var(--accent-mid); }
+
+/* ─── HERO ────────────────────────────────────────────── */
+.hero { margin-bottom: 40px; padding-bottom: 36px; border-bottom: 1px solid var(--border); }
+.hero-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--accent); margin-bottom: 14px;
+  background: var(--accent-soft); padding: 4px 12px;
+  border-radius: 999px; border: 1px solid #C7D2FE;
+}
+.hero h1 {
+  font-size: 30px; font-weight: 800; color: var(--text-1);
+  line-height: 1.2; margin-bottom: 12px; letter-spacing: -0.6px;
+}
+.hero p { font-size: 15px; color: var(--text-2); line-height: 1.65; max-width: 560px; }
+.hero-env-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px; align-items: center; }
+.env-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid;
+}
+.env-pill-local   { background: var(--c-local-bg); border-color: var(--c-local-b); color: var(--c-local-t); }
+.env-pill-gate    { background: var(--c-gate-bg);  border-color: var(--c-gate-b);  color: var(--c-gate-t);  }
+.env-pill-staging { background: var(--c-stage-bg); border-color: var(--c-stage-b); color: var(--c-stage-t); }
+.env-pill-prod    { background: var(--c-prod-bg);  border-color: var(--c-prod-b);  color: var(--c-prod-t);  }
+
+/* ─── SECTION NAV GRID (home) ─────────────────────────── */
+.section-nav-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 28px; }
+.section-nav-grid-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--text-3);
+  margin-bottom: 14px; margin-top: 36px;
+  border-top: 1px solid var(--border); padding-top: 24px;
+}
+.nav-section-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  cursor: pointer; text-decoration: none; display: block;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+}
+.nav-section-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-mid));
+  opacity: 0; transition: opacity 0.2s;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.nav-section-card:hover { box-shadow: var(--shadow-md); border-color: #C7D2FE; transform: translateY(-2px); }
+.nav-section-card:hover::before { opacity: 1; }
+.nav-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.nav-card-num   { font-size: 10px; font-weight: 700; color: var(--text-3); width: 18px; }
+.nav-card-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.nav-card-desc  { font-size: 12px; color: var(--text-2); line-height: 1.55; }
+
+/* ─── SECTION CARDS ───────────────────────────────────── */
+.section-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+  margin-bottom: 24px; overflow: hidden;
+  opacity: 0; transform: translateY(18px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.section-card.visible { opacity: 1; transform: translateY(0); }
+
+.section-card-header {
+  padding: 22px 28px 20px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  background: linear-gradient(to bottom, #FAFBFD, var(--card));
+}
+.section-card-header-left { display: flex; align-items: flex-start; gap: 16px; }
+.section-card-icon {
+  width: 40px; height: 40px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0; margin-top: 2px; box-shadow: var(--shadow-xs);
+}
+.icon-overview { background: linear-gradient(135deg,#EEF2FF,#E0E7FF); }
+.icon-env      { background: linear-gradient(135deg,#F0FDF4,#DCFCE7); }
+.icon-git      { background: linear-gradient(135deg,#EFF6FF,#DBEAFE); }
+.icon-e2e      { background: linear-gradient(135deg,#FFFBEB,#FEF9C3); }
+.icon-pr       { background: linear-gradient(135deg,#FFF7ED,#FFEDD5); }
+.icon-ci       { background: linear-gradient(135deg,#FEF2F2,#FEE2E2); }
+.icon-deploy   { background: linear-gradient(135deg,#F0FDF4,#DCFCE7); }
+
+.section-num {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-3); margin-bottom: 3px;
+}
+.section-title   { font-size: 18px; font-weight: 700; color: var(--text-1); line-height: 1.3; letter-spacing: -0.2px; }
+.section-subtitle { font-size: 13px; color: var(--text-2); margin-top: 4px; font-weight: 400; line-height: 1.5; }
+
+.section-env-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; border: 1px solid;
+  white-space: nowrap; flex-shrink: 0;
+}
+.tag-local   { background: var(--c-local-bg); border-color: var(--c-local-b); color: var(--c-local-t); }
+.tag-gate    { background: var(--c-gate-bg);  border-color: var(--c-gate-b);  color: var(--c-gate-t);  }
+.tag-staging { background: var(--c-stage-bg); border-color: var(--c-stage-b); color: var(--c-stage-t); }
+.tag-prod    { background: var(--c-prod-bg);  border-color: var(--c-prod-b);  color: var(--c-prod-t);  }
+.tag-neutral { background: var(--bg-subtle);  border-color: var(--border);    color: var(--text-2);    }
+
+.section-card-body { padding: 26px 28px 28px; }
+
+/* ─── CALLOUT BOXES ───────────────────────────────────── */
+.callout {
+  display: flex; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius-md);
+  margin: 20px 0; font-size: 13px; line-height: 1.6; border: 1px solid;
+}
+.callout-icon  { font-size: 15px; flex-shrink: 0; margin-top: 1px; line-height: 1.6; }
+.callout-body  { flex: 1; }
+.callout-title { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+.callout-text  { opacity: 0.88; }
+
+.callout-insight  { background: #EEF2FF; border-color: #C7D2FE; color: #312E81; }
+.callout-insight .callout-title  { color: #4338CA; }
+.callout-practice { background: #F0FDF4; border-color: #BBF7D0; color: #14532D; }
+.callout-practice .callout-title { color: #15803D; }
+.callout-warning  { background: #FFFBEB; border-color: #FDE68A; color: #78350F; }
+.callout-warning .callout-title  { color: #92400E; }
+.callout-note     { background: var(--bg-subtle); border-color: var(--border); color: var(--text-2); }
+.callout-note .callout-title     { color: var(--text-1); }
+
+/* ─── TYPOGRAPHY ──────────────────────────────────────── */
+.box-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-3); margin-bottom: 5px;
+}
+.box-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.box-note  { font-size: 12px; color: var(--text-2); margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--border); }
+.blist { margin-top: 6px; padding-left: 16px; font-size: 13px; color: var(--text-2); line-height: 1.7; }
+.blist li { margin-bottom: 3px; }
+
+/* ─── BOXES ───────────────────────────────────────────── */
+.box       { border: 1px solid var(--border); background: var(--card); padding: 12px 16px; border-radius: var(--radius-sm); }
+.box-dashed{ border: 1.5px dashed var(--border); background: var(--bg-subtle); padding: 14px 16px; border-radius: var(--radius-sm); }
+.box-dark  { border: 1px solid #CBD5E1; background: #F1F5F9; padding: 12px 16px; border-radius: var(--radius-sm); }
+.box-pass  { border: 1.5px solid var(--c-stage-b); background: var(--c-stage-bg); padding: 10px 14px; border-radius: var(--radius-sm); }
+.box-fail  { border: 1.5px solid var(--c-prod-b);  background: var(--c-prod-bg);  padding: 10px 14px; border-radius: var(--radius-sm); }
+
+.box-local   { border: 1.5px solid var(--c-local-b); background: var(--c-local-bg); padding: 12px 16px; border-radius: var(--radius-sm); }
+.box-gate    { border: 1.5px solid var(--c-gate-b);  background: var(--c-gate-bg);  padding: 12px 16px; border-radius: var(--radius-sm); }
+.box-staging { border: 1.5px solid var(--c-stage-b); background: var(--c-stage-bg); padding: 12px 16px; border-radius: var(--radius-sm); }
+.box-prod    { border: 1.5px solid var(--c-prod-b);  background: var(--c-prod-bg);  padding: 12px 16px; border-radius: var(--radius-sm); }
+
+.cb-local   { border-left: 4px solid var(--c-local)  !important; }
+.cb-gate    { border-left: 4px solid var(--c-gate)   !important; }
+.cb-staging { border-left: 4px solid var(--c-stage)  !important; }
+.cb-prod    { border-left: 4px solid var(--c-prod)   !important; }
+
+/* ─── CONTENT BLOCKS ──────────────────────────────────── */
+.content-block {
+  background: var(--bg-subtle); border: 1px solid var(--border);
+  border-left: 3px solid var(--text-3);
+  padding: 11px 14px; font-size: 13px; color: var(--text-2); border-radius: var(--radius-sm);
+}
+.content-block strong { color: var(--text-1); display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600; }
+.highlight-block {
+  background: var(--bg-subtle); border: 1px solid var(--border);
+  padding: 11px 14px; font-size: 13px; color: var(--text-2); border-radius: var(--radius-sm);
+}
+.highlight-block strong { color: var(--text-1); display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600; }
+
+/* ─── ENV BOXES ───────────────────────────────────────── */
+.env-box {
+  border: 1.5px solid var(--border); background: var(--card);
+  padding: 14px 16px; text-align: center; border-radius: var(--radius-md);
+  transition: box-shadow 0.2s, transform 0.15s; box-shadow: var(--shadow-xs);
+}
+.env-box:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.env-box.local { border-color: var(--c-local-b); background: var(--c-local-bg); }
+.env-box.dev   { border-color: var(--c-gate-b);  background: var(--c-gate-bg);  }
+.env-box.stage { border-color: var(--c-stage-b); background: var(--c-stage-bg); }
+.env-box.prod  { border-color: var(--c-prod-b);  background: var(--c-prod-bg);  }
+.env-box .env-purpose { margin-top: 8px; text-align: left; border-top: 1px dashed var(--border); padding-top: 8px; }
+
+/* ─── PIPELINE STAGES ─────────────────────────────────── */
+.pipeline-stage {
+  border: 1.5px solid var(--c-gate-b); border-left: 4px solid var(--c-gate);
+  background: var(--c-gate-bg); padding: 12px 14px; text-align: center;
+  border-radius: var(--radius-sm); transition: box-shadow 0.2s;
+}
+.pipeline-stage:hover { box-shadow: var(--shadow-sm); }
+.pipeline-stage .stage-num  { font-size: 10px; color: var(--c-gate-t); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+.pipeline-stage .stage-name { font-weight: 700; font-size: 14px; margin: 3px 0; color: var(--text-1); }
+.pipeline-stage .stage-desc { font-size: 11px; color: var(--c-gate-t); }
+.pipeline-stage .stage-body { margin-top: 8px; text-align: left; border-top: 1px dashed var(--c-gate-b); padding-top: 8px; }
+
+/* ─── TIMELINE ────────────────────────────────────────── */
+.timeline { display: flex; flex-direction: column; border-left: 2px solid var(--border); margin-left: 24px; }
+.tl-item  { display: flex; align-items: flex-start; }
+.tl-dot   { width: 13px; height: 13px; border: 2px solid var(--border); background: var(--card); border-radius: 50%; margin-left: -8.5px; margin-top: 12px; flex-shrink: 0; }
+.tl-dot.local   { background: var(--c-local); border-color: var(--c-local); }
+.tl-dot.gate    { background: var(--c-gate);  border-color: var(--c-gate);  }
+.tl-dot.staging { background: var(--c-stage); border-color: var(--c-stage); }
+.tl-dot.prod    { background: var(--c-prod);  border-color: var(--c-prod);  }
+.tl-content {
+  margin-left: 16px; border: 1px solid var(--border); background: var(--card);
+  padding: 9px 14px; min-width: 200px; margin-bottom: 7px; margin-top: 4px;
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.tl-content:hover { box-shadow: var(--shadow-sm); transform: translateX(2px); }
+.tl-content.local   { border-left: 4px solid var(--c-local); background: var(--c-local-bg); }
+.tl-content.gate    { border-left: 4px solid var(--c-gate);  background: var(--c-gate-bg);  }
+.tl-content.staging { border-left: 4px solid var(--c-stage); background: var(--c-stage-bg); }
+.tl-content.prod    { border-left: 4px solid var(--c-prod);  background: var(--c-prod-bg);  }
+.tl-content .tl-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); font-weight: 600; }
+.tl-content .tl-title { font-size: 13px; font-weight: 600; color: var(--text-1); }
+.tl-content .tl-note  { font-size: 11px; color: var(--text-2); }
+.tl-connector { width: 2px; height: 8px; background: var(--border); margin-left: -1px; }
+
+/* ─── PHASE CARDS ─────────────────────────────────────── */
+.phase-card {
+  border: 1px solid var(--border); padding: 14px 16px;
+  background: var(--bg-subtle); border-radius: var(--radius-md);
+  transition: box-shadow 0.2s;
+}
+.phase-card:hover { box-shadow: var(--shadow-sm); }
+.phase-card.local   { border-left: 4px solid var(--c-local); background: var(--c-local-bg); }
+.phase-card.gate    { border-left: 4px solid var(--c-gate);  background: var(--c-gate-bg);  }
+.phase-card.staging { border-left: 4px solid var(--c-stage); background: var(--c-stage-bg); }
+.phase-card.prod    { border-left: 4px solid var(--c-prod);  background: var(--c-prod-bg);  }
+
+/* ─── CHIPS ───────────────────────────────────────────── */
+.chip {
+  display: inline-block; background: var(--bg-subtle); border: 1px solid var(--border);
+  font-size: 10px; padding: 2px 8px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-2); font-weight: 600;
+}
+.chip.local   { background: var(--c-local-bg); border-color: var(--c-local-b); color: var(--c-local-t); }
+.chip.gate    { background: var(--c-gate-bg);  border-color: var(--c-gate-b);  color: var(--c-gate-t);  }
+.chip.staging { background: var(--c-stage-bg); border-color: var(--c-stage-b); color: var(--c-stage-t); }
+.chip.prod    { background: var(--c-prod-bg);  border-color: var(--c-prod-b);  color: var(--c-prod-t);  }
+
+/* ─── TTAG ────────────────────────────────────────────── */
+.ttag { display: inline-flex; align-items: center; font-size: 10px; padding: 3px 8px; border-radius: 999px; font-weight: 600; border: 1px solid; white-space: nowrap; }
+.ttag-local   { background: var(--c-local-bg); border-color: var(--c-local-b); color: var(--c-local-t); }
+.ttag-gate    { background: var(--c-gate-bg);  border-color: var(--c-gate-b);  color: var(--c-gate-t);  }
+.ttag-staging { background: var(--c-stage-bg); border-color: var(--c-stage-b); color: var(--c-stage-t); }
+.ttag-prod    { background: var(--c-prod-bg);  border-color: var(--c-prod-b);  color: var(--c-prod-t);  }
+.ttag-neutral { background: var(--bg-subtle); border-color: var(--border); color: var(--text-2); }
+
+/* ─── DIVIDER ─────────────────────────────────────────── */
+.wf-divider { border: none; border-top: 1px dashed var(--border); margin: 10px 0; }
+
+/* ─── GRIDS & FLOW ────────────────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+.flow-col { display: flex; flex-direction: column; align-items: center; }
+.flow-col > * { width: 100%; text-align: center; }
+.flow-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+.flow-row > * { flex-shrink: 0; }
+.arrow-down  { text-align: center; font-size: 18px; margin: 6px 0; color: var(--text-3); }
+.arrow-right { font-size: 16px; margin: 0 8px; color: var(--text-3); }
+
+/* ─── DELIVERY LOOP CARD ──────────────────────────────── */
+.delivery-loop-card {
+  background: linear-gradient(to bottom right, var(--card), #FAFBFF);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md); padding: 24px 28px;
+  margin-bottom: 28px; margin-top: 28px;
+  opacity: 0; transform: translateY(18px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.delivery-loop-card.visible { opacity: 1; transform: translateY(0); }
+.delivery-loop-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-3); margin-bottom: 16px; text-align: center;
+}
+.loop-step { padding: 5px 12px; font-size: 12px; font-weight: 600; border: 1px solid; border-radius: 999px; }
+.loop-step.local   { border-color: var(--c-local-b); background: var(--c-local-bg); color: var(--c-local-t); }
+.loop-step.gate    { border-color: var(--c-gate-b);  background: var(--c-gate-bg);  color: var(--c-gate-t);  }
+.loop-step.staging { border-color: var(--c-stage-b); background: var(--c-stage-bg); color: var(--c-stage-t); }
+.loop-step.prod    { border-color: var(--c-prod-b);  background: var(--c-prod-bg);  color: var(--c-prod-t);  font-weight: 700; border-width: 2px; }
+
+/* ─── NEXT BUTTON ─────────────────────────────────────── */
+.next-btn-row {
+  display: flex; justify-content: flex-end;
+  margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border);
+}
+.next-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 22px; background: var(--accent); color: #fff;
+  font-size: 13px; font-weight: 600; border: none;
+  border-radius: var(--radius-md); cursor: pointer;
+  box-shadow: var(--shadow-sm); font-family: inherit;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+.next-btn:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 18px rgba(99,102,241,0.35);
+  transform: translateY(-1px);
+}
+.next-btn:active { transform: translateY(0); }
+
+/* ─── PANEL SYSTEM ────────────────────────────────────── */
+.section-panel { display: none; opacity: 0; }
+.section-panel.active {
+  display: block;
+  animation: fadePanel 0.38s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+@keyframes fadePanel {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-panel.active .section-card,
+.section-panel.active .delivery-loop-card {
+  opacity: 0;
+  animation: fadeCard 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.section-panel.active .section-card:nth-child(1) { animation-delay: 0.06s; }
+.section-panel.active .section-card:nth-child(2) { animation-delay: 0.13s; }
+.section-panel.active .section-card:nth-child(3) { animation-delay: 0.20s; }
+.section-panel.active .delivery-loop-card        { animation-delay: 0.08s; }
+@keyframes fadeCard {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Override scroll-reveal — panel mode */
+.section-card, .delivery-loop-card {
+  opacity: 1 !important; transform: none !important; transition: none !important;
+}
+
+/* ─── SIDEBAR OVERLAY ─────────────────────────────────── */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(15,23,42,0.25); z-index: 150;
+  backdrop-filter: blur(2px);
+}
+.sidebar-overlay.visible { display: block; }
+
+/* ─── RESPONSIVE ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  .section-nav-grid { grid-template-columns: 1fr 1fr; }
+  .main-content { padding: 40px 28px 60px; }
+}
+@media (max-width: 700px) {
+  .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; width: 240px; }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0; padding: 72px 16px 60px; }
+  .mobile-nav { display: flex; }
+  .grid-2, .grid-3, .grid-4, .section-nav-grid { grid-template-columns: 1fr; }
+  .flow-row { flex-wrap: wrap; justify-content: center; }
+  .pipeline-tracker { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Mobile top bar -->
+<div class="mobile-nav">
+  <span class="mobile-nav-title">CI/CD Pipeline</span>
+  <button class="hamburger" id="menuBtn">☰</button>
+</div>
+<div class="sidebar-overlay" id="overlay"></div>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand" id="homeBtn" title="Back to home">
+    <div class="sidebar-brand-mark">CD</div>
+    <div class="sidebar-brand-text">
+      <h2>CI/CD Pipeline</h2>
+      <p>Software Delivery Lifecycle</p>
+    </div>
+  </div>
+
+  <div class="sidebar-section-label">Sections</div>
+
+  <a href="#s6" class="sidebar-link" data-section="s6">
+    <span class="sidebar-dot dot-staging"></span>
+    <span class="sidebar-link-text"><span class="sidebar-num">2</span>Environments</span>
+  </a>
+  <a href="#s7" class="sidebar-link" data-section="s7">
+    <span class="sidebar-dot dot-neutral"></span>
+    <span class="sidebar-link-text"><span class="sidebar-num">3</span>End-to-End</span>
+  </a>
+  <a href="#s2" class="sidebar-link" data-section="s2">
+    <span class="sidebar-dot dot-local"></span>
+    <span class="sidebar-link-text"><span class="sidebar-num">4</span>Git Foundation</span>
+  </a>
+  <a href="#s3" class="sidebar-link" data-section="s3">
+    <span class="sidebar-dot dot-gate"></span>
+    <span class="sidebar-link-text"><span class="sidebar-num">5</span>Pull Requests</span>
+  </a>
+  <a href="#s4" class="sidebar-link" data-section="s4">
+    <span class="sidebar-dot dot-gate"></span>
+    <span class="sidebar-link-text"><span class="sidebar-num">6</span>CI Pipeline</span>
+  </a>
+  <a href="#s8" class="sidebar-link" data-section="s8">
+    <span class="sidebar-dot dot-staging"></span>
+    <span class="sidebar-link-text"><span class="sidebar-num">7</span>Deployment</span>
+  </a>
+
+  <div class="sidebar-footer">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px;">Color = Environment</div>
+    <div class="env-legend">
+      <div class="env-legend-item"><span class="sidebar-dot dot-local"></span>Blue — Local</div>
+      <div class="env-legend-item"><span class="sidebar-dot dot-gate"></span>Yellow — Dev / Review</div>
+      <div class="env-legend-item"><span class="sidebar-dot dot-staging"></span>Green — Staging</div>
+      <div class="env-legend-item"><span class="sidebar-dot" style="background:var(--c-prod);"></span>Red — Production</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN CONTENT ── -->
+<main class="main-content">
+
+  <!-- ── S1: OVERVIEW (Main Page / Home) ── -->
+  <div id="panel-s1" class="section-panel active">
+
+  <div class="hero">
+    <div class="hero-label">Educational Reference</div>
+    <h1>CI/CD Pipeline<br>Software Delivery Lifecycle</h1>
+    <p>How code moves from a developer's machine to production — covering Git, Pull Requests, CI automation, environments, and deployment.</p>
+    <div class="hero-env-strip">
+      <span class="env-pill env-pill-local">● Local</span>
+      <span style="color:var(--text-3);font-size:18px;line-height:1;">→</span>
+      <span class="env-pill env-pill-gate">● Dev / Review Gate</span>
+      <span style="color:var(--text-3);font-size:18px;line-height:1;">→</span>
+      <span class="env-pill env-pill-staging">● Staging</span>
+      <span style="color:var(--text-3);font-size:18px;line-height:1;">→</span>
+      <span class="env-pill env-pill-prod">● Production</span>
+    </div>
+  </div>
+
+  <div id="s1" class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-header-left">
+        <div class="section-card-icon icon-overview"></div>
+        <div>
+          <div class="section-num">Section 1</div>
+          <div class="section-title">CI/CD Overview</div>
+          <div class="section-subtitle">The philosophy behind shipping code confidently and continuously</div>
+        </div>
+      </div>
+      <span class="section-env-tag tag-neutral">Overview</span>
+    </div>
+    <div class="section-card-body">
+
+      <div class="flow-row" style="justify-content:center;align-items:center;gap:0;margin-bottom:24px;">
+        <div class="box-local" style="padding:12px 22px;text-align:center;min-width:140px;">
+          <div class="box-label">Stage A</div>
+          <div class="box-title" style="color:var(--c-local-t);">Code Change</div>
+        </div>
+        <div class="arrow-right" style="color:var(--c-gate);">→</div>
+        <div class="box-gate" style="padding:12px 22px;text-align:center;min-width:140px;">
+          <div class="box-label">Stage B</div>
+          <div class="box-title" style="color:var(--c-gate-t);">Validation</div>
+        </div>
+        <div class="arrow-right" style="color:var(--c-stage);">→</div>
+        <div class="box-staging" style="padding:12px 22px;text-align:center;min-width:140px;">
+          <div class="box-label">Stage C · D</div>
+          <div class="box-title" style="color:var(--c-stage-t);">Staging → Prod</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="box-dashed" style="border-left:4px solid var(--c-local);">
+          <div class="box-label">Pillar 1</div>
+          <div class="box-title">Continuous Integration (CI)</div>
+          <hr class="wf-divider" />
+          <ul class="blist">
+            <li>Devs merge to a shared branch multiple times per day</li>
+            <li>Each merge triggers automated tests — no human needed</li>
+            <li>Catches integration problems early</li>
+          </ul>
+        </div>
+        <div class="box-dashed" style="border-left:4px solid var(--c-gate);">
+          <div class="box-label">Pillar 2</div>
+          <div class="box-title">Continuous Delivery (CD)</div>
+          <hr class="wf-divider" />
+          <ul class="blist">
+            <li>Validated builds are staged for release automatically</li>
+            <li>A human decision triggers the final production push</li>
+            <li>Software is always in a releasable state</li>
+          </ul>
+        </div>
+        <div class="box-dashed" style="border-left:4px solid var(--c-prod);">
+          <div class="box-label">Pillar 3</div>
+          <div class="box-title">Continuous Deployment</div>
+          <hr class="wf-divider" />
+          <ul class="blist">
+            <li>Every passing change deploys to production automatically</li>
+            <li>No human approval at the deployment step</li>
+            <li>Requires high test coverage and fast rollback</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout callout-insight" style="margin-top:20px;margin-bottom:0;">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <div class="callout-title">Key Insight</div>
+          <div class="callout-text">CI and CD are often discussed together but serve different purposes. CI keeps the team moving fast; CD ensures every result is always safe to ship. Together they eliminate the high-risk "big bang" release.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section-nav-grid-label">Explore Sections</div>
+  <div class="section-nav-grid">
+    <a class="nav-section-card" data-goto="s6">
+      <div class="nav-card-top"><span class="sidebar-dot dot-staging"></span><span class="nav-card-num">2</span><span class="nav-card-title">Environments</span></div>
+      <div class="nav-card-desc">Local → Dev → Staging → Production and what changes at each step.</div>
+    </a>
+    <a class="nav-section-card" data-goto="s7">
+      <div class="nav-card-top"><span class="sidebar-dot dot-neutral"></span><span class="nav-card-num">3</span><span class="nav-card-title">End-to-End Journey</span></div>
+      <div class="nav-card-desc">Full delivery timeline from branch creation to production release.</div>
+    </a>
+    <a class="nav-section-card" data-goto="s2">
+      <div class="nav-card-top"><span class="sidebar-dot dot-local"></span><span class="nav-card-num">4</span><span class="nav-card-title">Git Foundation</span></div>
+      <div class="nav-card-desc">Repos, commits, pushes, and how version control underpins the entire pipeline.</div>
+    </a>
+    <a class="nav-section-card" data-goto="s3">
+      <div class="nav-card-top"><span class="sidebar-dot dot-gate"></span><span class="nav-card-num">5</span><span class="nav-card-title">Pull Requests</span></div>
+      <div class="nav-card-desc">Code review workflow — open, review, approve, and merge to main.</div>
+    </a>
+    <a class="nav-section-card" data-goto="s4">
+      <div class="nav-card-top"><span class="sidebar-dot dot-gate"></span><span class="nav-card-num">6</span><span class="nav-card-title">CI Pipeline</span></div>
+      <div class="nav-card-desc">Debugging, unit tests, security scan, and build validation — automated.</div>
+    </a>
+    <a class="nav-section-card" data-goto="s8">
+      <div class="nav-card-top"><span class="sidebar-dot dot-staging"></span><span class="nav-card-num">7</span><span class="nav-card-title">Deployment</span></div>
+      <div class="nav-card-desc">Vercel, Netlify, the automated deployment chain, and the full delivery loop.</div>
+    </a>
+  </div>
+
+  </div><!-- /panel-s1 -->
+
+  <!-- ── S6: ENVIRONMENTS ── -->
+  <div id="panel-s6" class="section-panel">
+
+  <div class="pipeline-tracker">
+    <div class="pt-step active" onclick="showPanel('s6')"><div class="pt-dot"></div><div class="pt-label">Environments</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s7')"><div class="pt-dot"></div><div class="pt-label">End-to-End</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s2')"><div class="pt-dot"></div><div class="pt-label">Git</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s3')"><div class="pt-dot"></div><div class="pt-label">Pull Requests</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s4')"><div class="pt-dot"></div><div class="pt-label">CI Pipeline</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s8')"><div class="pt-dot"></div><div class="pt-label">Deployment</div></div>
+  </div>
+
+  <div id="s6" class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-header-left">
+        <div class="section-card-icon icon-env"></div>
+        <div>
+          <div class="section-num">Section 2</div>
+          <div class="section-title">Environment Promotion</div>
+          <div class="section-subtitle">How code lives in different stages before reaching real users</div>
+        </div>
+      </div>
+      <span class="section-env-tag tag-neutral">All Environments</span>
+    </div>
+    <div class="section-card-body">
+
+      <div class="flow-row" style="justify-content:center;align-items:stretch;gap:0;margin-bottom:20px;flex-wrap:nowrap;">
+        <div class="env-box local" style="flex:1;">
+          <div class="box-label" style="color:var(--c-local-t);">Environment 1</div>
+          <div class="box-title" style="color:var(--c-local-t);">Local</div>
+          <hr class="wf-divider" />
+          <div class="env-purpose">
+            <ul class="blist" style="margin-top:0;">
+              <li>Only the developer sees this</li>
+              <li>Hot reload, verbose errors, debug tools</li>
+              <li>Fastest feedback loop</li>
+            </ul>
+          </div>
+          <div style="margin-top:8px;"><code style="font-size:11px;color:var(--c-local-t);background:var(--c-local-bg);padding:2px 6px;border-radius:4px;">localhost:3000</code></div>
+        </div>
+
+        <div style="display:flex;align-items:center;padding:0 8px;">
+          <div style="text-align:center;"><div style="font-size:18px;color:var(--c-gate);">→</div><div style="font-size:9px;color:var(--text-3);margin-top:2px;">push</div></div>
+        </div>
+
+        <div class="env-box dev" style="flex:1;">
+          <div class="box-label" style="color:var(--c-gate-t);">Environment 2</div>
+          <div class="box-title" style="color:var(--c-gate-t);">Dev</div>
+          <hr class="wf-divider" />
+          <div class="env-purpose">
+            <ul class="blist" style="margin-top:0;">
+              <li>Shared team environment — everyone can see it</li>
+              <li>First deployment off your machine</li>
+              <li>Features integrate here before going to staging</li>
+              <li>Dev-level config: verbose logs, test data, debug flags</li>
+            </ul>
+          </div>
+          <div style="margin-top:8px;"><code style="font-size:11px;color:var(--c-gate-t);background:var(--c-gate-bg);padding:2px 6px;border-radius:4px;">dev.myapp.com</code></div>
+        </div>
+
+        <div style="display:flex;align-items:center;padding:0 8px;">
+          <div style="text-align:center;"><div style="font-size:18px;color:var(--c-stage);">→</div><div style="font-size:9px;color:var(--text-3);margin-top:2px;">promote</div></div>
+        </div>
+
+        <div class="env-box stage" style="flex:1;">
+          <div class="box-label" style="color:var(--c-stage-t);">Environment 3</div>
+          <div class="box-title" style="color:var(--c-stage-t);">Staging</div>
+          <hr class="wf-divider" />
+          <div class="env-purpose">
+            <ul class="blist" style="margin-top:0;">
+              <li>Mirrors production infrastructure exactly</li>
+              <li>QA, UAT, and performance testing happen here</li>
+              <li>Bug caught here = production incident avoided</li>
+            </ul>
+          </div>
+          <div style="margin-top:8px;"><code style="font-size:11px;color:var(--c-stage-t);background:var(--c-stage-bg);padding:2px 6px;border-radius:4px;">staging.myapp.com</code></div>
+        </div>
+
+        <div style="display:flex;align-items:center;padding:0 8px;">
+          <div style="text-align:center;"><div style="font-size:18px;color:var(--c-prod);">→</div><div style="font-size:9px;color:var(--text-3);margin-top:2px;">release</div></div>
+        </div>
+
+        <div class="env-box prod" style="flex:1;">
+          <div class="box-label" style="color:var(--c-prod-t);">Environment 4</div>
+          <div class="box-title" style="color:var(--c-prod-t);">Production</div>
+          <hr class="wf-divider" />
+          <div class="env-purpose">
+            <ul class="blist" style="margin-top:0;">
+              <li>Serves real users — zero downtime deployments</li>
+              <li>Full monitoring, alerting, error tracking</li>
+              <li>Rollback available in seconds</li>
+            </ul>
+          </div>
+          <div style="margin-top:8px;"><code style="font-size:11px;color:var(--c-prod-t);background:var(--c-prod-bg);padding:2px 6px;border-radius:4px;">myapp.com</code></div>
+        </div>
+      </div>
+
+      <hr class="wf-divider" />
+
+      <div class="grid-2" style="align-items:start;">
+        <div>
+          <div class="box-label" style="margin-bottom:10px;">Code Promotion Path</div>
+          <div class="flow-col">
+            <div class="box-dark" style="width:100%;text-align:center;border-left:3px solid #CBD5E1;">
+              <div class="box-label">From CI</div>
+              <div class="box-title">Code merged to main</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+            <div class="box-gate" style="width:100%;text-align:center;">
+              <span class="chip gate">Team Review</span>
+              <div class="box-title" style="margin-top:5px;color:var(--c-gate-t);">Dev</div>
+              <div style="font-size:12px;color:var(--text-2);margin-top:3px;">Integration testing · shared visibility</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-stage);">↓</div>
+            <div class="box-staging" style="width:100%;text-align:center;">
+              <span class="chip staging">QA Gate</span>
+              <div class="box-title" style="margin-top:5px;color:var(--c-stage-t);">Staging</div>
+              <div style="font-size:12px;color:var(--text-2);margin-top:3px;">UAT · performance · final sign-off</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-prod);">↓</div>
+            <div class="box-prod" style="width:100%;text-align:center;">
+              <span class="chip prod">Release</span>
+              <div class="box-title" style="margin-top:5px;color:var(--c-prod-t);">Production</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="box-label" style="margin-bottom:10px;">What Changes Across Environments</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="content-block cb-local">
+              <strong style="color:var(--c-local-t);">Local</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Docker to mimic production services (Supabase, etc.)</li>
+                <li>Debug logging on, error overlays enabled</li>
+                <li>No secrets — uses placeholder env vars</li>
+              </ul>
+            </div>
+            <div class="content-block cb-gate">
+              <strong style="color:var(--c-gate-t);">Dev</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Shared dev database, real API integrations (sandbox tier)</li>
+                <li>Verbose logging, feature flags may be toggled on</li>
+                <li>Where multiple developers' branches first meet</li>
+              </ul>
+            </div>
+            <div class="content-block cb-staging">
+              <strong style="color:var(--c-stage-t);">Staging</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Production-mirrored DB with anonymised data</li>
+                <li>Same infra config, secrets, and CDN as prod</li>
+                <li>No debug flags — behaves like production</li>
+              </ul>
+            </div>
+            <div class="content-block cb-prod">
+              <strong style="color:var(--c-prod-t);">Production</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Live data, real users, full monitoring active</li>
+                <li>Minimal logging (performance), strict error handling</li>
+                <li>Change here = real consequences</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-practice">
+        <div class="callout-icon">✓</div>
+        <div class="callout-body">
+          <div class="callout-title">Best Practice</div>
+          <div class="callout-text">Staging should mirror production exactly — same infrastructure, config, services, and data shape. Any difference is a future production incident waiting to happen.</div>
+        </div>
+      </div>
+      <div class="callout callout-warning" style="margin-top:0;">
+        <div class="callout-icon">⚠</div>
+        <div class="callout-body">
+          <div class="callout-title">Common Mistake</div>
+          <div class="callout-text">Skipping staging and deploying directly from dev to production removes your last safety net before real users are impacted.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="next-btn-row">
+    <button class="next-btn" onclick="showPanel('s7')">End-to-End Journey →</button>
+  </div>
+  </div><!-- /panel-s6 -->
+
+  <!-- ── S7: END-TO-END ── -->
+  <div id="panel-s7" class="section-panel">
+
+  <div class="pipeline-tracker">
+    <div class="pt-step done" onclick="showPanel('s6')"><div class="pt-dot"></div><div class="pt-label">Environments</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step active" onclick="showPanel('s7')"><div class="pt-dot"></div><div class="pt-label">End-to-End</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s2')"><div class="pt-dot"></div><div class="pt-label">Git</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s3')"><div class="pt-dot"></div><div class="pt-label">Pull Requests</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s4')"><div class="pt-dot"></div><div class="pt-label">CI Pipeline</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s8')"><div class="pt-dot"></div><div class="pt-label">Deployment</div></div>
+  </div>
+
+  <div id="s7" class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-header-left">
+        <div class="section-card-icon icon-e2e"></div>
+        <div>
+          <div class="section-num">Section 3</div>
+          <div class="section-title">End-to-End Journey</div>
+          <div class="section-subtitle">The complete path from a single commit to a live production release</div>
+        </div>
+      </div>
+      <span class="section-env-tag tag-neutral">All Environments</span>
+    </div>
+    <div class="section-card-body">
+      <div class="grid-2" style="align-items:start;gap:24px;">
+
+        <div>
+          <div class="box-label" style="margin-bottom:12px;">Delivery Timeline</div>
+          <div class="timeline">
+            <div class="tl-item"><div class="tl-dot local"></div><div class="tl-content local"><div class="tl-label">Local</div><div class="tl-title">Create Branch</div><div class="tl-note">git checkout -b feature/my-feature</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot local"></div><div class="tl-content local"><div class="tl-label">Local</div><div class="tl-title">Write Code · Commit · Push</div><div class="tl-note">git commit → git push</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot gate"></div><div class="tl-content gate"><div class="tl-label">Review Gate</div><div class="tl-title">Open Pull Request</div><div class="tl-note">Assign reviewers · CI auto-kicks off</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot gate"></div><div class="tl-content gate"><div class="tl-label">Review Gate</div><div class="tl-title">Code Review</div><div class="tl-note">Comments · changes requested · approved</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot gate"></div><div class="tl-content gate"><div class="tl-label">Review Gate · CI</div><div class="tl-title">CI Pipeline Runs</div><div class="tl-note">Debug → Tests → Security → Build</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot gate"></div><div class="tl-content gate"><div class="tl-label">Review Gate</div><div class="tl-title">Approval &amp; Merge</div><div class="tl-note">All checks pass · feature/ → main</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot gate"></div><div class="tl-content gate"><div class="tl-label">Dev</div><div class="tl-title">Promote → Dev</div><div class="tl-note">Team integration · shared visibility · sanity check</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot staging"></div><div class="tl-content staging"><div class="tl-label">Staging</div><div class="tl-title">Promote → Staging</div><div class="tl-note">QA · UAT · sign-off</div></div></div><div class="tl-connector"></div>
+            <div class="tl-item"><div class="tl-dot prod"></div><div class="tl-content prod"><div class="tl-label">Production</div><div class="tl-title">Production</div><div class="tl-note">Live · monitored · rollback ready</div></div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="box-label">Phase Summaries</div>
+          <div class="phase-card local">
+            <div class="box-title" style="margin-bottom:6px;color:var(--c-local-t);">Phase 1 — Branch · Commit · Push</div>
+            <ul class="blist"><li>Developer works in isolation — no shared codebase at risk</li><li>All iteration happens before touching the team</li></ul>
+          </div>
+          <div class="phase-card gate">
+            <div class="box-title" style="margin-bottom:6px;color:var(--c-gate-t);">Phase 2 — PR · Review · Merge · Dev</div>
+            <ul class="blist"><li>Human layer catches design issues automation can't</li><li>CI enforces quality automatically — code earns its way to Dev</li></ul>
+          </div>
+          <div class="phase-card staging">
+            <div class="box-title" style="margin-bottom:6px;color:var(--c-stage-t);">Phase 3 — Staging</div>
+            <ul class="blist"><li>Final proof-of-correctness checkpoint before going live</li><li>Same infrastructure as production — no surprises on release</li></ul>
+          </div>
+          <div class="phase-card prod">
+            <div class="box-title" style="margin-bottom:6px;color:var(--c-prod-t);">Phase 4 — Production</div>
+            <ul class="blist">
+              <li>Code has passed: local CI, human review, Dev integration, and QA</li>
+              <li>Full monitoring active — rollback ready if anything goes wrong</li>
+            </ul>
+          </div>
+
+          <div class="callout callout-note" style="margin-top:4px;">
+            <div class="callout-icon">📌</div>
+            <div class="callout-body">
+              <div class="callout-title">Key Principle</div>
+              <div class="callout-text">Each handoff in the pipeline is a quality gate. Code doesn't advance unless it passes. This is what makes CI/CD reliable — not speed, but structured verification at every step.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="next-btn-row">
+    <button class="next-btn" onclick="showPanel('s2')">Git Foundation →</button>
+  </div>
+  </div><!-- /panel-s7 -->
+
+  <!-- ── S2: GIT FOUNDATION ── -->
+  <div id="panel-s2" class="section-panel">
+
+  <div class="pipeline-tracker">
+    <div class="pt-step done" onclick="showPanel('s6')"><div class="pt-dot"></div><div class="pt-label">Environments</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s7')"><div class="pt-dot"></div><div class="pt-label">End-to-End</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step active" onclick="showPanel('s2')"><div class="pt-dot"></div><div class="pt-label">Git</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s3')"><div class="pt-dot"></div><div class="pt-label">Pull Requests</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s4')"><div class="pt-dot"></div><div class="pt-label">CI Pipeline</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s8')"><div class="pt-dot"></div><div class="pt-label">Deployment</div></div>
+  </div>
+
+  <div id="s2" class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-header-left">
+        <div class="section-card-icon icon-git"></div>
+        <div>
+          <div class="section-num">Section 4</div>
+          <div class="section-title">Git Foundation</div>
+          <div class="section-subtitle">Version control as the backbone every pipeline is built on</div>
+        </div>
+      </div>
+      <span class="section-env-tag tag-local">Local Environment</span>
+    </div>
+    <div class="section-card-body">
+      <div class="grid-2" style="align-items:start;">
+
+        <div>
+          <div class="box-label" style="margin-bottom:10px;">Developer → Repository Flow</div>
+          <div class="flow-col">
+            <div class="box-dark" style="width:100%;text-align:center;border-left:4px solid var(--c-local);">
+              <div class="box-label">Actor</div>
+              <div class="box-title">Developer</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-local);">↓</div>
+            <div class="box-local" style="width:100%;text-align:center;">
+              <div class="box-label">Step 1</div>
+              <div class="box-title" style="color:var(--c-local-t);">Local Repository</div>
+              <div class="box-note">git clone — private copy on your machine</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-local);">↓</div>
+            <div class="box-local" style="width:100%;text-align:center;">
+              <div class="box-label">Step 2</div>
+              <div class="box-title" style="color:var(--c-local-t);">Commit</div>
+              <div class="box-note">git commit — immutable snapshot</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-local);">↓</div>
+            <div class="box-local" style="width:100%;text-align:center;">
+              <div class="box-label">Step 3</div>
+              <div class="box-title" style="color:var(--c-local-t);">Push</div>
+              <div class="box-note">git push — sends commits to remote</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-local);">↓</div>
+            <div style="width:100%;text-align:center;border:2px solid var(--c-local);background:var(--c-local-bg);padding:12px 16px;border-radius:var(--radius-sm);">
+              <div class="box-label">Destination</div>
+              <div class="box-title" style="color:var(--c-local-t);">Remote Repository</div>
+              <div class="box-note">GitHub / GitLab — shared, authoritative</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="box-label" style="margin-bottom:8px;">Core Git Concepts</div>
+          <div class="grid-2" style="gap:10px;">
+            <div class="content-block cb-local">
+              <strong>Repositories</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Local repo = your machine; Remote repo = shared truth</li>
+                <li>Clone remote, work independently, push back</li>
+              </ul>
+            </div>
+            <div class="content-block cb-local">
+              <strong>Commits</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Immutable snapshot with SHA hash, author, timestamp</li>
+                <li>Cannot be altered — permanent auditable record</li>
+              </ul>
+            </div>
+            <div class="content-block cb-local">
+              <strong>Pushes</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Sends local commits to the remote</li>
+                <li>Triggers CI checks and deployment pipelines</li>
+              </ul>
+            </div>
+            <div class="content-block cb-local">
+              <strong>Version History</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>git log, git blame, git revert</li>
+                <li>Essential for diagnosing and rolling back issues</li>
+              </ul>
+            </div>
+            <div class="content-block cb-local">
+              <strong>Collaboration</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Parallel branches, no interference</li>
+                <li>Conflicts require manual resolution before merging</li>
+              </ul>
+            </div>
+            <div class="highlight-block cb-local">
+              <strong>Source of Truth</strong>
+              <ul class="blist" style="margin-top:3px;">
+                <li>Every pipeline reads from the remote repo</li>
+                <li>No code reaches production without passing through Git</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout callout-insight" style="margin-top:14px;">
+            <div class="callout-icon">💡</div>
+            <div class="callout-body">
+              <div class="callout-title">Key Insight</div>
+              <div class="callout-text">Every production incident is traceable to a specific commit. Git's immutable history gives you the power to understand exactly what changed, when, and by whom — and to undo it with precision.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="next-btn-row">
+    <button class="next-btn" onclick="showPanel('s3')">Pull Requests →</button>
+  </div>
+  </div><!-- /panel-s2 -->
+
+  <!-- ── S3: PULL REQUESTS ── -->
+  <div id="panel-s3" class="section-panel">
+
+  <div class="pipeline-tracker">
+    <div class="pt-step done" onclick="showPanel('s6')"><div class="pt-dot"></div><div class="pt-label">Environments</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s7')"><div class="pt-dot"></div><div class="pt-label">End-to-End</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s2')"><div class="pt-dot"></div><div class="pt-label">Git</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step active" onclick="showPanel('s3')"><div class="pt-dot"></div><div class="pt-label">Pull Requests</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s4')"><div class="pt-dot"></div><div class="pt-label">CI Pipeline</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s8')"><div class="pt-dot"></div><div class="pt-label">Deployment</div></div>
+  </div>
+
+  <div id="s3" class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-header-left">
+        <div class="section-card-icon icon-pr"></div>
+        <div>
+          <div class="section-num">Section 5</div>
+          <div class="section-title">Pull Request Workflow</div>
+          <div class="section-subtitle">Human review as the quality gate before automation kicks in</div>
+        </div>
+      </div>
+      <span class="section-env-tag tag-gate">Review Gate</span>
+    </div>
+    <div class="section-card-body">
+      <div class="grid-2" style="align-items:start;gap:20px;">
+
+        <div>
+          <div class="box-label" style="margin-bottom:10px;">PR Process Flow</div>
+          <div class="flow-col">
+            <div class="box-local" style="width:100%;text-align:center;">
+              <div class="box-label">Origin</div>
+              <div class="box-title" style="color:var(--c-local-t);">Feature Branch</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-local);">↓</div>
+            <div class="box-local" style="width:100%;text-align:center;">
+              <div class="box-label">Step 1</div>
+              <div class="box-title" style="color:var(--c-local-t);">Push Changes</div>
+              <div class="box-note">git push origin feature/my-feature</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+            <div class="box-gate" style="width:100%;text-align:center;">
+              <div class="box-label">Step 2</div>
+              <div class="box-title" style="color:var(--c-gate-t);">Open Pull Request</div>
+              <div class="box-note">feature → main · assign reviewers</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+            <div class="box-gate" style="width:100%;text-align:center;">
+              <div class="box-label">Step 3</div>
+              <div class="box-title" style="color:var(--c-gate-t);">Code Review</div>
+              <div class="box-note">Read diff · comment · request changes</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+            <div class="box-gate" style="width:100%;text-align:center;">
+              <div class="box-label">Step 4</div>
+              <div class="box-title" style="color:var(--c-gate-t);">Approval</div>
+              <div class="box-note">≥ 1 approval · CI green · merge unlocked</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+            <div class="box-gate" style="width:100%;text-align:center;border:2px solid var(--c-gate);">
+              <div class="box-label">Step 5</div>
+              <div class="box-title" style="color:var(--c-gate-t);">Merge to Main → deploys to Dev</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="box-label" style="margin-bottom:10px;">Review Cards</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="box cb-gate">
+              <div class="box-label">Card A</div>
+              <div class="box-title">Reviewer Comments</div>
+              <ul class="blist">
+                <li>Inline comments on specific lines of the diff</li>
+                <li>Flags logic errors, performance issues, missing edge cases</li>
+                <li>Creates a permanent record of design decisions</li>
+              </ul>
+            </div>
+            <div class="box cb-gate">
+              <div class="box-label">Card B</div>
+              <div class="box-title">Requested Changes</div>
+              <ul class="blist">
+                <li>PR is blocked until all issues are addressed</li>
+                <li>Author must re-request review after fixing</li>
+              </ul>
+            </div>
+            <div class="box cb-gate">
+              <div class="box-label">Card C</div>
+              <div class="box-title">Approval</div>
+              <ul class="blist">
+                <li>At least one reviewer approves — logged with name and timestamp</li>
+                <li>Critical code may require two or more approvals</li>
+              </ul>
+            </div>
+            <div class="box cb-gate">
+              <div class="box-label">Card D</div>
+              <div class="box-title">Merge Decision</div>
+              <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="box-pass" style="text-align:center;"><div style="font-size:13px;font-weight:700;">Merge</div><div style="font-size:11px;color:var(--text-2);margin-top:3px;">Approvals + CI green</div></div>
+                <div class="box-fail" style="text-align:center;"><div style="font-size:13px;font-weight:700;">Block</div><div style="font-size:11px;color:var(--text-2);margin-top:3px;">CI failing or changes requested</div></div>
+              </div>
+              <ul class="blist" style="margin-top:9px;">
+                <li><strong>Merge commit</strong> — preserves branch history</li>
+                <li><strong>Squash</strong> — one clean commit</li>
+                <li><strong>Rebase</strong> — linear history on main</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout callout-practice" style="margin-top:14px;">
+            <div class="callout-icon">✓</div>
+            <div class="callout-body">
+              <div class="callout-title">Best Practice</div>
+              <div class="callout-text">Keep pull requests small and focused — one feature or fix per PR. Large PRs are harder to review thoroughly, take longer to merge, and hide bugs more easily.</div>
+            </div>
+          </div>
+          <div class="callout callout-warning" style="margin-top:0;">
+            <div class="callout-icon">⚠</div>
+            <div class="callout-body">
+              <div class="callout-title">Common Mistake</div>
+              <div class="callout-text">Merging before CI finishes to "save time" defeats the purpose of the pipeline entirely and can silently ship broken code to users.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="next-btn-row">
+    <button class="next-btn" onclick="showPanel('s4')">CI Pipeline →</button>
+  </div>
+  </div><!-- /panel-s3 -->
+
+  <!-- ── S4: CI PIPELINE ── -->
+  <div id="panel-s4" class="section-panel">
+
+  <div class="pipeline-tracker">
+    <div class="pt-step done" onclick="showPanel('s6')"><div class="pt-dot"></div><div class="pt-label">Environments</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s7')"><div class="pt-dot"></div><div class="pt-label">End-to-End</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s2')"><div class="pt-dot"></div><div class="pt-label">Git</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s3')"><div class="pt-dot"></div><div class="pt-label">Pull Requests</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step active" onclick="showPanel('s4')"><div class="pt-dot"></div><div class="pt-label">CI Pipeline</div></div>
+    <div class="pt-line"></div>
+    <div class="pt-step" onclick="showPanel('s8')"><div class="pt-dot"></div><div class="pt-label">Deployment</div></div>
+  </div>
+
+  <div id="s4" class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-header-left">
+        <div class="section-card-icon icon-ci"></div>
+        <div>
+          <div class="section-num">Section 6</div>
+          <div class="section-title">Continuous Integration Pipeline</div>
+          <div class="section-subtitle">Automated validation that protects your main branch from every broken change</div>
+        </div>
+      </div>
+      <span class="section-env-tag tag-gate">Review Gate / CI</span>
+    </div>
+    <div class="section-card-body">
+      <div class="grid-2" style="align-items:start;gap:24px;">
+
+        <div>
+          <div class="box-label" style="margin-bottom:10px;">Sequential Stages</div>
+          <div class="flow-col">
+            <div class="box-local" style="width:100%;text-align:center;">
+              <div class="box-label">Trigger</div>
+              <div class="box-title" style="color:var(--c-local-t);">PR Opened / Updated</div>
+              <div style="font-size:11px;color:var(--text-2);margin-top:4px;">Initiated from local push</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+
+            <div class="pipeline-stage" style="width:100%;">
+              <div class="stage-num">Stage 1</div>
+              <div class="stage-name">Debugging</div>
+              <div class="stage-desc">Catch errors before code advances</div>
+              <div class="stage-body">
+                <ul class="blist" style="margin-top:0;">
+                  <li>Inspect call stack, check variable state, isolate root cause</li>
+                  <li>Far cheaper to fix here than in production</li>
+                </ul>
+              </div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+
+            <div class="pipeline-stage" style="width:100%;">
+              <div class="stage-num">Stage 2</div>
+              <div class="stage-name">Unit Tests</div>
+              <div class="stage-desc">Jest / Vitest — isolated component tests</div>
+              <div class="stage-body">
+                <ul class="blist" style="margin-top:0;">
+                  <li>Targets 70–90% code coverage</li>
+                  <li>Any failure halts the pipeline and blocks the merge</li>
+                </ul>
+              </div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+
+            <div class="pipeline-stage" style="width:100%;">
+              <div class="stage-num">Stage 3</div>
+              <div class="stage-name">Security Scan</div>
+              <div class="stage-desc">Snyk / npm audit — CVE and credential check</div>
+              <div class="stage-body">
+                <ul class="blist" style="margin-top:0;">
+                  <li>Blocks on high/critical vulnerabilities</li>
+                  <li>Scans for accidentally committed secrets or API keys</li>
+                </ul>
+              </div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+
+            <div class="pipeline-stage" style="width:100%;">
+              <div class="stage-num">Stage 4</div>
+              <div class="stage-name">Build Validation</div>
+              <div class="stage-desc">npm run build — full production compile</div>
+              <div class="stage-body">
+                <ul class="blist" style="margin-top:0;">
+                  <li>TypeScript compile, all imports resolved, artifact valid</li>
+                  <li>Build failure here = cannot deploy at all</li>
+                </ul>
+              </div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+
+            <div class="box-gate" style="width:100%;text-align:center;border:2px solid var(--c-gate);">
+              <div class="box-label">Success</div>
+              <div class="box-title" style="color:var(--c-gate-t);">Ready to Merge → deploys to Dev</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <div class="box-label" style="margin-bottom:8px;">Pass / Fail Decision Tree</div>
+            <div class="box-dark" style="text-align:center;padding:10px;border-left:4px solid var(--c-gate);"><div class="box-title">Each Stage Check</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+              <div class="flow-col">
+                <div class="box-pass" style="width:100%;text-align:center;"><div style="font-weight:700;font-size:13px;">PASS</div></div>
+                <div class="arrow-down" style="color:var(--c-stage);">↓</div>
+                <div class="box" style="width:100%;text-align:center;font-size:12px;">Continue to next stage</div>
+              </div>
+              <div class="flow-col">
+                <div class="box-fail" style="width:100%;text-align:center;"><div style="font-weight:700;font-size:13px;">FAIL</div></div>
+                <div class="arrow-down" style="color:var(--c-prod);">↓</div>
+                <div class="box-fail" style="width:100%;text-align:center;font-size:12px;font-weight:700;">Pipeline Halted</div>
+                <div class="arrow-down" style="color:var(--c-local);">↓</div>
+                <div class="box-local" style="width:100%;text-align:center;font-size:12px;">Dev fixes locally</div>
+                <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+                <div class="box-gate" style="width:100%;text-align:center;font-size:12px;">Push → restart CI</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout-insight">
+            <div class="callout-icon">💡</div>
+            <div class="callout-body">
+              <div class="callout-title">Key Insight</div>
+              <div class="callout-text">A broken CI pipeline blocks every developer on the team. Treat a failing pipeline like a production outage — fix it immediately, it's never someone else's problem.</div>
+            </div>
+          </div>
+          <div class="callout callout-warning" style="margin-top:0;">
+            <div class="callout-icon">⚠</div>
+            <div class="callout-body">
+              <div class="callout-title">Common Mistake</div>
+              <div class="callout-text">Skipping tests to ship a feature faster creates technical debt that compounds — future bugs cost far more to diagnose without a test suite to narrow the cause.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="next-btn-row">
+    <button class="next-btn" onclick="showPanel('s8')">Deployment →</button>
+  </div>
+  </div><!-- /panel-s4 -->
+
+  <!-- ── S8: DEPLOYMENT ── -->
+  <div id="panel-s8" class="section-panel">
+
+  <div class="pipeline-tracker">
+    <div class="pt-step done" onclick="showPanel('s6')"><div class="pt-dot"></div><div class="pt-label">Environments</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s7')"><div class="pt-dot"></div><div class="pt-label">End-to-End</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s2')"><div class="pt-dot"></div><div class="pt-label">Git</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s3')"><div class="pt-dot"></div><div class="pt-label">Pull Requests</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step done" onclick="showPanel('s4')"><div class="pt-dot"></div><div class="pt-label">CI Pipeline</div></div>
+    <div class="pt-line done"></div>
+    <div class="pt-step active" onclick="showPanel('s8')"><div class="pt-dot"></div><div class="pt-label">Deployment</div></div>
+  </div>
+
+  <div id="s8" class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-header-left">
+        <div class="section-card-icon icon-deploy"></div>
+        <div>
+          <div class="section-num">Section 7</div>
+          <div class="section-title">Deployment Platforms</div>
+          <div class="section-subtitle">From merged code to live product — automated, reliable, and always reversible</div>
+        </div>
+      </div>
+      <span class="section-env-tag tag-staging">Staging → Prod</span>
+    </div>
+    <div class="section-card-body">
+      <div class="grid-2" style="align-items:start;gap:20px;">
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="box-dashed" style="border-left:4px solid var(--text-3);">
+            <div class="box-label">Platform A</div>
+            <div class="box-title">Vercel</div>
+            <hr class="wf-divider" />
+            <ul class="blist">
+              <li>Connects to GitHub / GitLab / Bitbucket</li>
+              <li>Every push creates a Preview Deployment with a unique shareable URL</li>
+              <li>Merging to main auto-deploys to production — zero config</li>
+            </ul>
+          </div>
+          <div class="box-dashed" style="border-left:4px solid var(--text-3);">
+            <div class="box-label">Platform B</div>
+            <div class="box-title">Netlify</div>
+            <hr class="wf-divider" />
+            <ul class="blist">
+              <li>Watches for pushes — every PR gets a Deploy Preview URL</li>
+              <li>Production deploys trigger automatically on merge to main</li>
+              <li>Supports serverless functions and edge deployments</li>
+            </ul>
+          </div>
+
+          <div class="callout callout-practice">
+            <div class="callout-icon">✓</div>
+            <div class="callout-body">
+              <div class="callout-title">Best Practice</div>
+              <div class="callout-text">Always have a tested rollback plan before deploying to production. Know exactly how to revert within seconds — don't wait for an incident to figure it out.</div>
+            </div>
+          </div>
+          <div class="callout callout-note" style="margin-top:0;">
+            <div class="callout-icon">📌</div>
+            <div class="callout-body">
+              <div class="callout-title">Preview Deployments</div>
+              <div class="callout-text">Preview deployments are a superpower — show your changes to stakeholders before merging, with a real URL and zero production risk.</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="box-label" style="margin-bottom:10px;">Deployment Chain</div>
+          <div class="flow-col">
+            <div class="box-local" style="width:100%;text-align:center;">
+              <div class="box-title" style="color:var(--c-local-t);">Git Repository</div>
+              <div class="box-note">Push or merge fires webhook</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
+            <div class="box-gate" style="width:100%;text-align:center;">
+              <div class="box-title" style="color:var(--c-gate-t);">Dev Deployment</div>
+              <div class="box-note">Auto-deploys on merge to main · team validates</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-stage);">↓</div>
+            <div class="box-staging" style="width:100%;text-align:center;">
+              <div class="box-title" style="color:var(--c-stage-t);">Staging Deployment</div>
+              <div class="box-note">QA · UAT · performance sign-off</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-stage);">↓</div>
+            <div style="width:100%;text-align:center;border:1px dashed var(--c-stage-b);background:var(--c-stage-bg);padding:12px 16px;border-radius:var(--radius-sm);">
+              <div class="box-title" style="color:var(--c-stage-t);">Preview Deployment</div>
+              <div class="box-note">Unique URL · shareable · auto-deleted after merge</div>
+            </div>
+            <div class="arrow-down" style="color:var(--c-prod);">↓</div>
+            <div class="box-prod" style="width:100%;text-align:center;border:2px solid var(--c-prod);">
+              <div class="box-title" style="color:var(--c-prod-t);">Production Deployment</div>
+              <div class="box-note">Live URL · CDN · auto-scaling · rollback</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="delivery-loop-card" style="opacity:1;transform:none;transition:none;">
+    <div class="delivery-loop-title">Complete Delivery Loop</div>
+    <div class="flow-row" style="justify-content:center;flex-wrap:wrap;gap:6px;align-items:center;">
+      <span class="loop-step local">Code</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step local">Commit</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step local">Push</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step gate">PR</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step gate">Review</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step gate">CI</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step gate">Merge</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step gate">Dev</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step staging">Staging</span>
+      <span style="color:var(--text-3);">→</span>
+      <span class="loop-step prod">Production</span>
+    </div>
+  </div>
+
+  <div class="next-btn-row">
+    <button class="next-btn" onclick="showPanel('s1')">← Back to Home</button>
+  </div>
+  </div><!-- /panel-s8 -->
+
+</main>
+
+<script>
+  const panels   = document.querySelectorAll('.section-panel');
+  const navLinks = document.querySelectorAll('.sidebar-link[data-section]');
+  const sidebar  = document.getElementById('sidebar');
+  const overlay  = document.getElementById('overlay');
+
+  function showPanel(id) {
+    panels.forEach(p => {
+      p.classList.remove('active');
+      p.style.display = 'none';
+    });
+    const target = document.getElementById('panel-' + id);
+    if (target) {
+      target.style.display = 'block';
+      void target.offsetWidth;
+      target.classList.add('active');
+    }
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.dataset.section === id);
+    });
+    document.querySelector('.main-content').scrollTop = 0;
+    if (id === 's1') {
+      document.body.classList.add('on-main');
+    } else {
+      document.body.classList.remove('on-main');
+    }
+  }
+
+  navLinks.forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      showPanel(a.dataset.section);
+      sidebar.classList.remove('open');
+      overlay.classList.remove('visible');
+    });
+  });
+
+  document.getElementById('homeBtn').addEventListener('click', () => {
+    showPanel('s1');
+  });
+
+  document.querySelectorAll('.nav-section-card[data-goto]').forEach(card => {
+    card.addEventListener('click', () => showPanel(card.dataset.goto));
+  });
+
+  document.getElementById('menuBtn').addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('visible');
+  });
+  overlay.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+  });
+
+  showPanel('s1');
+</script>
+</body>
+</html>

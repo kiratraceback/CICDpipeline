@@ -764,7 +764,7 @@ body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
     </a>
     <a class="nav-section-card" data-goto="s8">
       <div class="nav-card-top"><span class="sidebar-dot dot-staging"></span><span class="nav-card-num">7</span><span class="nav-card-title">Deployment</span></div>
-      <div class="nav-card-desc">Vercel, Netlify, the automated deployment chain, and the full delivery loop.</div>
+      <div class="nav-card-desc">Vercel, Preview Deployments, and the path to production.</div>
     </a>
   </div>
 
@@ -864,7 +864,6 @@ body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
             <ul class="blist" style="margin-top:0;">
               <li>Serves real users — zero downtime deployments</li>
               <li>Full monitoring, alerting, error tracking</li>
-              <li>Rollback available in seconds</li>
             </ul>
           </div>
           <div style="margin-top:8px;"><code style="font-size:11px;color:var(--c-prod-t);background:var(--c-prod-bg);padding:2px 6px;border-radius:4px;">traceback.ai</code></div>
@@ -873,70 +872,34 @@ body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
 
       <hr class="wf-divider" />
 
-      <div class="grid-2" style="align-items:start;">
-        <div>
-          <div class="box-label" style="margin-bottom:10px;">Code Promotion Path</div>
-          <div class="flow-col">
-            <div class="box-dark" style="width:100%;text-align:center;border-left:3px solid #CBD5E1;">
-              <div class="box-label">From CI</div>
-              <div class="box-title">Code merged to main</div>
-            </div>
-            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
-            <div class="box-gate" style="width:100%;text-align:center;">
-              <span class="chip gate">Team Review</span>
-              <div class="box-title" style="margin-top:5px;color:var(--c-gate-t);">Dev</div>
-              <div style="font-size:12px;color:var(--text-2);margin-top:3px;">Integration testing · shared visibility</div>
-            </div>
-            <div class="arrow-down" style="color:var(--c-stage);">↓</div>
-            <div class="box-staging" style="width:100%;text-align:center;">
-              <span class="chip staging">QA Gate</span>
-              <div class="box-title" style="margin-top:5px;color:var(--c-stage-t);">Staging</div>
-              <div style="font-size:12px;color:var(--text-2);margin-top:3px;">UAT · performance · final sign-off</div>
-            </div>
-            <div class="arrow-down" style="color:var(--c-prod);">↓</div>
-            <div class="box-prod" style="width:100%;text-align:center;">
-              <span class="chip prod">Release</span>
-              <div class="box-title" style="margin-top:5px;color:var(--c-prod-t);">Production</div>
-            </div>
-          </div>
+      <div class="box-label" style="margin-bottom:10px;">Configuration &amp; Data Differences</div>
+      <div class="grid-4">
+        <div class="content-block cb-local">
+          <strong style="color:var(--c-local-t);">Local</strong>
+          <ul class="blist" style="margin-top:3px;">
+            <li>Docker mimics production services</li>
+            <li>No secrets — placeholder env vars</li>
+          </ul>
         </div>
-
-        <div>
-          <div class="box-label" style="margin-bottom:10px;">What Changes Across Environments</div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div class="content-block cb-local">
-              <strong style="color:var(--c-local-t);">Local</strong>
-              <ul class="blist" style="margin-top:3px;">
-                <li>Docker to mimic production services (Supabase, etc.)</li>
-                <li>Debug logging on, error overlays enabled</li>
-                <li>No secrets — uses placeholder env vars</li>
-              </ul>
-            </div>
-            <div class="content-block cb-gate">
-              <strong style="color:var(--c-gate-t);">Dev</strong>
-              <ul class="blist" style="margin-top:3px;">
-                <li>Shared dev database, real API integrations (sandbox tier)</li>
-                <li>Verbose logging, feature flags may be toggled on</li>
-                <li>Where multiple developers' branches first meet</li>
-              </ul>
-            </div>
-            <div class="content-block cb-staging">
-              <strong style="color:var(--c-stage-t);">Staging</strong>
-              <ul class="blist" style="margin-top:3px;">
-                <li>Production-mirrored DB with anonymised data</li>
-                <li>Same infra config, secrets, and CDN as prod</li>
-                <li>No debug flags — behaves like production</li>
-              </ul>
-            </div>
-            <div class="content-block cb-prod">
-              <strong style="color:var(--c-prod-t);">Production</strong>
-              <ul class="blist" style="margin-top:3px;">
-                <li>Live data, real users, full monitoring active</li>
-                <li>Minimal logging (performance), strict error handling</li>
-                <li>Change here = real consequences</li>
-              </ul>
-            </div>
-          </div>
+        <div class="content-block cb-gate">
+          <strong style="color:var(--c-gate-t);">Dev</strong>
+          <ul class="blist" style="margin-top:3px;">
+            <li>Shared DB, sandbox-tier API integrations</li>
+          </ul>
+        </div>
+        <div class="content-block cb-staging">
+          <strong style="color:var(--c-stage-t);">Staging</strong>
+          <ul class="blist" style="margin-top:3px;">
+            <li>Anonymised copy of production data</li>
+            <li>No debug flags enabled</li>
+          </ul>
+        </div>
+        <div class="content-block cb-prod">
+          <strong style="color:var(--c-prod-t);">Production</strong>
+          <ul class="blist" style="margin-top:3px;">
+            <li>Minimal logging, strict error handling</li>
+            <li>Every change has real consequences</li>
+          </ul>
         </div>
       </div>
 
@@ -1021,13 +984,12 @@ body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
           </div>
           <div class="phase-card staging">
             <div class="box-title" style="margin-bottom:6px;color:var(--c-stage-t);">Phase 3 — Staging</div>
-            <ul class="blist"><li>Final proof-of-correctness checkpoint before going live</li><li>Same infrastructure as production — no surprises on release</li></ul>
+            <ul class="blist"><li>Final proof-of-correctness checkpoint before going live</li></ul>
           </div>
           <div class="phase-card prod">
             <div class="box-title" style="margin-bottom:6px;color:var(--c-prod-t);">Phase 4 — Production</div>
             <ul class="blist">
               <li>Code has passed: local CI, human review, Dev integration, and QA</li>
-              <li>Full monitoring active — rollback ready if anything goes wrong</li>
             </ul>
           </div>
 
@@ -1494,23 +1456,13 @@ body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
 
         <div style="display:flex;flex-direction:column;gap:12px;">
           <div class="box-dashed" style="border-left:4px solid var(--text-3);">
-            <div class="box-label">Platform A</div>
+            <div class="box-label">Platform</div>
             <div class="box-title">Vercel</div>
             <hr class="wf-divider" />
             <ul class="blist">
               <li>Connects to GitHub / GitLab / Bitbucket</li>
               <li>Every push creates a Preview Deployment with a unique shareable URL</li>
               <li>Merging to main auto-deploys to production — zero config</li>
-            </ul>
-          </div>
-          <div class="box-dashed" style="border-left:4px solid var(--text-3);">
-            <div class="box-label">Platform B</div>
-            <div class="box-title">Netlify</div>
-            <hr class="wf-divider" />
-            <ul class="blist">
-              <li>Watches for pushes — every PR gets a Deploy Preview URL</li>
-              <li>Production deploys trigger automatically on merge to main</li>
-              <li>Supports serverless functions and edge deployments</li>
             </ul>
           </div>
 
@@ -1537,16 +1489,6 @@ body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
               <div class="box-title" style="color:var(--c-local-t);">Git Repository</div>
               <div class="box-note">Push or merge fires webhook</div>
             </div>
-            <div class="arrow-down" style="color:var(--c-gate);">↓</div>
-            <div class="box-gate" style="width:100%;text-align:center;">
-              <div class="box-title" style="color:var(--c-gate-t);">Dev Deployment</div>
-              <div class="box-note">Auto-deploys on merge to main · team validates</div>
-            </div>
-            <div class="arrow-down" style="color:var(--c-stage);">↓</div>
-            <div class="box-staging" style="width:100%;text-align:center;">
-              <div class="box-title" style="color:var(--c-stage-t);">Staging Deployment</div>
-              <div class="box-note">QA · UAT · performance sign-off</div>
-            </div>
             <div class="arrow-down" style="color:var(--c-stage);">↓</div>
             <div style="width:100%;text-align:center;border:1px dashed var(--c-stage-b);background:var(--c-stage-bg);padding:12px 16px;border-radius:var(--radius-sm);">
               <div class="box-title" style="color:var(--c-stage-t);">Preview Deployment</div>
@@ -1558,34 +1500,10 @@ body.on-main .section-nav-grid { grid-template-columns: repeat(3, 1fr); }
               <div class="box-note">Live URL · CDN · auto-scaling · rollback</div>
             </div>
           </div>
+          <div style="font-size:11px;color:var(--text-3);text-align:center;margin-top:10px;">Full Dev → Staging path covered in <a href="#" onclick="event.preventDefault();showPanel('s7');" style="color:var(--accent);font-weight:600;text-decoration:none;">End-to-End Journey</a></div>
         </div>
 
       </div>
-    </div>
-  </div>
-
-  <div class="delivery-loop-card" style="opacity:1;transform:none;transition:none;">
-    <div class="delivery-loop-title">Complete Delivery Loop</div>
-    <div class="flow-row" style="justify-content:center;flex-wrap:wrap;gap:6px;align-items:center;">
-      <span class="loop-step local">Code</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step local">Commit</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step local">Push</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step gate">PR</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step gate">Review</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step gate">CI</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step gate">Merge</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step gate">Dev</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step staging">Staging</span>
-      <span style="color:var(--text-3);">→</span>
-      <span class="loop-step prod">Production</span>
     </div>
   </div>
 
